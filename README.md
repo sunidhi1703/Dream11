@@ -1,4 +1,4 @@
-# Dream11 AI Team Predictor
+# Dream11 Team Predictor
 
 A web application to help users create winning fantasy cricket teams for IPL matches on Dream11 using machine learning predictions. The app predicts player performance and provides an optimal 11-player team based on official fantasy rules and budget constraints.
 
