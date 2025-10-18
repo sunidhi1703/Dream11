@@ -10,6 +10,7 @@ A web application to help users create winning fantasy cricket teams for IPL mat
 - Processes player squads and predicts fantasy points.
 - Recommends an optimal 11-player team based on budget and team composition rules.
 - Calculates the actual Dream XI after the match for performance comparison.
+- Link for demo video https://drive.google.com/file/d/19IsIbTH9HaRVbmbRamg9k8YFq19PVwkw/view?usp=sharing
 
 ---
 
