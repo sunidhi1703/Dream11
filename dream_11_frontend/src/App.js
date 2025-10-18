@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import styled, { keyframes } from "styled-components";
 
-// --- Styled Components ---
 
 const Container = styled.div`
   max-width: 900px;
@@ -178,7 +177,6 @@ const TeamTable = ({ title, team, pointColumnName }) => {
   );
 };
 
-// --- Main App Component ---
 
 export default function App() {
   const [selectedFile, setSelectedFile] = useState(null);

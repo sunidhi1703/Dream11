@@ -10,12 +10,11 @@ from flask_cors import CORS
 import warnings
 from collections import defaultdict
 
-# --- Setup ---
+
 warnings.filterwarnings('ignore')
 app = Flask(__name__)
 CORS(app) 
 
-# --- Global Variables (Loaded once on startup to be fast) ---
 df_logs = None
 df_roles_season = None
 df_roles_global = None
@@ -23,9 +22,7 @@ model = None
 FEATURES = []
 role_median_credits = {}
 
-# ==================================================================
-# --- ALL HELPER FUNCTIONS ---
-# ==================================================================
+#  ALL HELPER FUNCTIONS 
 
 def get_player_role(player_id, season):
     try:
@@ -86,7 +83,7 @@ def get_total_fantasy_points(player_match_stats):
     return calculate_batting_points(player_match_stats) + calculate_bowling_points(player_match_stats) + calculate_fielding_points(player_match_stats)
 
 def parse_match_data_for_dream_xi(data):
-    # This is the full, robust parser from our Colab notebook
+
     season = int(data['info']['dates'][0].split('-')[0])
     name_to_id = {name: str(pid) for name, pid in data['info']['registry']['people'].items()}
     id_to_team = {str(pid): team for team, players in data['info']['players'].items() for name in players if (pid := name_to_id.get(name))}
@@ -147,7 +144,7 @@ def parse_match_data_for_dream_xi(data):
         player_stats['overs'] = player_stats.pop('legal_balls_bowled', 0) / 6.0
         player_stats['is_out'] = out_status[pid]
         player_stats['role'] = get_player_role(pid, season)
-        # Clean up temporary keys used for maiden calculation
+
         for over_num in range(20): player_stats.pop(over_num, None)
         total_fp = get_total_fantasy_points(player_stats)
         final_stats_list.append({'player_id': pid, 'fantasy_points': total_fp})
@@ -186,9 +183,7 @@ def select_optimal_team(players_df, budget=100.0, point_col='predicted_fp'):
         return players_df[players_df['player_id'].astype(str).isin([p for p in player_ids if player_vars[p].varValue == 1])].copy()
     return None
 
-# ==================================================================
-# --- FLASK ENDPOINT ---
-# ==================================================================
+#FLASK ENDPOINT 
 @app.route('/predict', methods=['POST'])
 def predict():
     if 'file' not in request.files or not (df_logs is not None and model is not None):
@@ -255,7 +250,6 @@ def predict():
         df_actual_points['player_id'] = df_actual_points['player_id'].astype(str)
         df_ground_truth = df_test.merge(df_actual_points, on='player_id', how='left')
         
-        # FIX: Ensure actual_fp column exists and handle missing values
         if 'actual_fp' not in df_ground_truth.columns:
             df_ground_truth['actual_fp'] = 0
         df_ground_truth['actual_fp'] = df_ground_truth['actual_fp'].fillna(0)
@@ -266,37 +260,36 @@ def predict():
         dream_xi = select_optimal_team(df_ground_truth, point_col='actual_fp')
         
         if recommended_xi is not None and dream_xi is not None:
-            print(f"\n🔍 DEBUG: Predicted XI has {len(recommended_xi)} players")
-            print(f"🔍 DEBUG: Dream XI has {len(dream_xi)} players")
-            print(f"🔍 DEBUG: Actual stats parsed for {len(df_actual_points)} players")
-            print(f"🔍 DEBUG: Sample actual points: {df_actual_points.head(3).to_dict('records')}")
+            print(f"\n DEBUG: Predicted XI has {len(recommended_xi)} players")
+            print(f" DEBUG: Dream XI has {len(dream_xi)} players")
+            print(f" DEBUG: Actual stats parsed for {len(df_actual_points)} players")
+            print(f" DEBUG: Sample actual points: {df_actual_points.head(3).to_dict('records')}")
             
             # FIX: Merge actual points for predicted XI
             pred_xi_with_actual = recommended_xi.merge(df_actual_points, on='player_id', how='left')
             if 'actual_fp' not in pred_xi_with_actual.columns:
-                print("⚠️ WARNING: 'actual_fp' column missing after merge for predicted XI")
+                print("WARNING: 'actual_fp' column missing after merge for predicted XI")
                 pred_xi_with_actual['actual_fp'] = 0
             pred_xi_with_actual['actual_fp'] = pred_xi_with_actual['actual_fp'].fillna(0)
             pred_xi_actual_points = pred_xi_with_actual['actual_fp'].sum()
             
-            print(f"✅ Predicted XI actual points sum: {pred_xi_actual_points}")
+            print(f"Predicted XI actual points sum: {pred_xi_actual_points}")
             
             # FIX: Dream XI already has actual_fp from ground_truth - DON'T merge again!
             # Just use the existing actual_fp column
             dream_xi_with_actual_points = dream_xi.copy()
             if 'actual_fp' not in dream_xi_with_actual_points.columns:
-                print("⚠️ WARNING: 'actual_fp' column missing in dream XI")
+                print(" WARNING: 'actual_fp' column missing in dream XI")
                 dream_xi_with_actual_points['actual_fp'] = 0
             dream_xi_with_actual_points['actual_fp'] = dream_xi_with_actual_points['actual_fp'].fillna(0)
             dream_xi_total_points = dream_xi_with_actual_points['actual_fp'].sum()
             
-            print(f"✅ Dream XI actual points sum: {dream_xi_total_points}")
+            print(f" Dream XI actual points sum: {dream_xi_total_points}")
 
             final_score = abs(dream_xi_total_points - pred_xi_actual_points)
             
-            print(f"📊 Final Score (Absolute Error): {final_score}")
-            
-            # Convert DataFrames to standard Python dicts before sending
+            print(f" Final Score (Absolute Error): {final_score}")
+          
             response_data = {
                 'predictedXI': json.loads(pred_xi_with_actual.to_json(orient='records')),
                 'dreamXI': json.loads(dream_xi_with_actual_points.to_json(orient='records')),
@@ -341,7 +334,6 @@ def load_all_data():
         COLS_TO_EXCLUDE = [TARGET, 'match_id', 'player_id', 'match_date', 'role', 'appearance_count', 'composite_score', 'percentile_rank']
         FEATURES = [col for col in df_train_data.columns if col not in COLS_TO_EXCLUDE]
         
-        # FIX: Calculate role median credits with proper error handling
         required_median_cols = ['appearance_count', 'role', 'credits']
         if all(col in df_train_data.columns for col in required_median_cols):
             df_for_medians = df_train_data.dropna(subset=required_median_cols)
@@ -356,10 +348,10 @@ def load_all_data():
         print(f"Calculated role medians: {role_median_credits}")
 
     except FileNotFoundError as e:
-        print(f"🚨 FATAL ERROR loading data: {e}. Make sure all required CSV and model files are present.")
+        print(f"FATAL ERROR loading data: {e}. Make sure all required CSV and model files are present.")
         exit()
     except Exception as e:
-        print(f"🚨 FATAL ERROR during initialization: {e}")
+        print(f"FATAL ERROR during initialization: {e}")
         import traceback
         traceback.print_exc()
         exit()
